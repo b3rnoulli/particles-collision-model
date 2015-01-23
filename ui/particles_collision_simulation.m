@@ -22,7 +22,7 @@ function varargout = particles_collision_simulation(varargin)
 
 % Edit the above text to modify the response to help particles_collision_simulation
 
-% Last Modified by GUIDE v2.5 23-Jan-2015 15:50:04
+% Last Modified by GUIDE v2.5 24-Jan-2015 00:04:33
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -57,12 +57,20 @@ function particles_collision_simulation_OpeningFcn(hObject, eventdata, handles, 
 handles.X_BOUND = 10;
 handles.Y_BOUND = 10;
 handles.output = hObject;
+handles.last_clicked_particle=0;
 handles.particle_count = 100;
 handles.particle_radius_vector = abs(normrnd(0.1,0.1,[1 handles.particle_count]));
 handles.particle_mass_vector = ones(1,handles.particle_count);
 handles.color_map = hsv(handles.particle_count);
-do_initialize_box(handles)
+[handles.x, handles.y] = do_initialize_box(handles);
 guidata(hObject, handles);
+do_plot_particles(handles)
+
+function particle_click_callback(src,evt, handles, particle_ID)
+myhandles = guidata(gcbo);
+myhandles.last_clicked_particle = particle_ID;
+guidata(gcbo,myhandles)
+
 
 % UIWAIT makes particles_collision_simulation wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
@@ -98,10 +106,10 @@ else
     handles.particle_mass_vector= random_data;
 end
 handles.color_map = hsv(handles.particle_count);
-guidata(hObject, handles);
 axes(handles.particle_box);
-do_initialize_box(handles);
+[handles.x,handles.y] = do_initialize_box(handles);
 guidata(hObject, handles);
+do_plot_particles(handles)
 
 
 
@@ -124,9 +132,10 @@ function particle_count_sld_Callback(hObject, eventdata, handles)
 % hObject    handle to particle_count_sld (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-set(handles.particle_count_text_box,'String',num2str(floor(get(hObject,'Value'))));
+val = floor(get(hObject,'Value'));
+set(handles.particle_count_text_box,'String',num2str(val));
+set(handles.text3, 'String', resolve_label_text(val));
 guidata(hObject,handles);
-
 
 
 % --- Executes during object creation, after setting all properties.
@@ -275,11 +284,66 @@ else
     set(target_radio,'Value',0);
 end
 
+function [label_text] = resolve_label_text(val)
+if val > 100
+    label_text = 'Choose particle radius (0.001 - 0.2)';
+elseif val > 50
+    label_text = 'Choose particle radius (0.001 - 0.3)';
+else
+    label_text = 'Choose particle radius (0.001 - 0.5)';
+end
 
-function do_initialize_box(handles)
+
+function [x,y] = do_initialize_box(handles)
 axes(handles.particle_box);
 cla;
 axis([0 handles.X_BOUND 0 handles.Y_BOUND]);
 set(handles.reset_button,'enable','off');
-initialize_particle_box(handles.particle_count, handles.particle_radius_vector, handles.particle_mass_vector, handles.X_BOUND, handles.Y_BOUND, handles.color_map);
+[x,y] = initialize_particle_box(handles.particle_count, handles.particle_radius_vector, handles.particle_mass_vector, handles.X_BOUND, handles.Y_BOUND, handles.color_map);
 set(handles.reset_button,'enable','on');
+
+
+% --- Executes on mouse press over axes background.
+function particle_box_ButtonDownFcn(hObject, eventdata, handles)
+% hObject    handle to particle_box (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+clicked_point = get(handles.particle_box,'CurrentPoint');
+xp1 = clicked_point(1);
+yp1 = clicked_point(3);
+particle_distance = calculate_particles_distance(xp1,yp1,handles.x,handles.y);
+for i=1:1:handles.particle_count
+   particleID = find(particle_distance < handles.particle_radius_vector(i));
+end
+handles.particleID = particleID;
+guidata(hObject, handles);
+
+
+% --- Executes on mouse press over figure background, over a disabled or
+% --- inactive control, or over an axes background.
+function figure1_WindowButtonUpFcn(hObject, eventdata, handles)
+% hObject    handle to figure1 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+handles.last_clicked_particle = 0;
+guidata(hObject, handles);
+
+
+% --- Executes on mouse motion over figure - except title and menu.
+function figure1_WindowButtonMotionFcn(hObject, eventdata, handles)
+% hObject    handle to figure1 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+if handles.last_clicked_particle ~= 0
+   
+end
+
+function do_plot_particles(handles)
+for i=1:1:handles.particle_count
+    rectangle('FaceColor',handles.color_map(i,:),...
+        'Curvature',[1,1],...
+        'Position',[handles.x(i)-handles.particle_radius_vector(i),handles.y(i)-handles.particle_radius_vector(i),...
+        2*handles.particle_radius_vector(i),2*handles.particle_radius_vector(i)],...
+        'ButtonDownFcn',{@particle_click_callback,handles,i});
+    pause(0.001); 
+end

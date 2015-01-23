@@ -1,9 +1,9 @@
 function [x,y] = initialize_particle_box(particle_count, particle_radius_vector, particle_mass_vector, x_bound, y_bound, color_map)
 %INITIALIZE_PARTICLE_BOX function initiaze particles positions and draw
 %particles in current axes
-%   particle_count
-%   particle_radius_vector
-%   particle_mass_vector
+%   particle_count - number of particles in box
+%   particle_radius_vector - each particle radius
+%   particle_mass_vector - each particle mass
 %   x_bound, y_bound - box bounduary
 %   color_map - color map of particles
 x=zeros(1,particle_count);
@@ -29,13 +29,6 @@ while (particle_added < particle_count)
     end
 end
 
-for i=1:1:particle_count
-    rectangle('FaceColor',color_map(i,:),...
-        'Curvature',[1,1],...
-        'Position',[x(i)-particle_radius_vector(i),y(i)-particle_radius_vector(i),...
-        2*particle_radius_vector(i),2*particle_radius_vector(i)]);
-    pause(0.001);
-end
 end
 
 
