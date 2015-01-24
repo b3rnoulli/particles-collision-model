@@ -64,7 +64,10 @@ handles.particle_mass_vector = ones(1,handles.particle_count);
 handles.color_map = hsv(handles.particle_count);
 [handles.x, handles.y] = do_initialize_box(handles);
 guidata(hObject, handles);
-do_plot_particles(handles)
+set(handles.reset_button,'Enable','off');
+handles.particles_plot = do_plot_particles(handles);
+set(handles.reset_button,'Enable','on');
+guidata(hObject, handles);
 
 function particle_click_callback(src,evt, handles, particle_ID)
 myhandles = guidata(gcbo);
@@ -109,7 +112,9 @@ handles.color_map = hsv(handles.particle_count);
 axes(handles.particle_box);
 [handles.x,handles.y] = do_initialize_box(handles);
 guidata(hObject, handles);
-do_plot_particles(handles)
+set(handles.reset_button,'Enable','off');
+do_plot_particles(handles);
+set(handles.reset_button,'Enable','on');
 
 
 
@@ -335,15 +340,26 @@ function figure1_WindowButtonMotionFcn(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 if handles.last_clicked_particle ~= 0
-   
+   i= handles.last_clicked_particle;
+   current_point = get(handles.particle_box,'CurrentPoint');
+   delete(handles.particles_plot(i));
+   handles.particles_plot(i) = do_plot_single_particle(current_point(1),current_point(3),i,handles.particle_radius_vector(i),handles.color_map(i,:), handles);  
 end
+guidata(hObject, handles);
 
-function do_plot_particles(handles)
+function [circles] = do_plot_particles(handles)
+circles = zeros(1,handles.particle_count);
 for i=1:1:handles.particle_count
-    rectangle('FaceColor',handles.color_map(i,:),...
-        'Curvature',[1,1],...
-        'Position',[handles.x(i)-handles.particle_radius_vector(i),handles.y(i)-handles.particle_radius_vector(i),...
-        2*handles.particle_radius_vector(i),2*handles.particle_radius_vector(i)],...
-        'ButtonDownFcn',{@particle_click_callback,handles,i});
+    circles(i) = do_plot_single_particle(handles.x(i),handles.y(i),i, handles.particle_radius_vector(i), handles.color_map(i,:),handles);
     pause(0.001); 
 end
+
+function [circle] =  do_plot_single_particle(x,y,particle_ID, radius, color_map, handles)
+circle = rectangle('FaceColor',color_map,...
+        'Curvature',[1,1],...
+        'Position',[x-radius,y-radius,...
+        2*radius,2*radius],...
+        'ButtonDownFcn',{@particle_click_callback,handles,particle_ID});
+
+
+
