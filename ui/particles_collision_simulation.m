@@ -22,7 +22,7 @@ function varargout = particles_collision_simulation(varargin)
 
 % Edit the above text to modify the response to help particles_collision_simulation
 
-% Last Modified by GUIDE v2.5 24-Jan-2015 00:04:33
+% Last Modified by GUIDE v2.5 27-Jan-2015 23:05:48
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -63,10 +63,16 @@ handles.particle_radius_vector = abs(normrnd(0.1,0.1,[1 handles.particle_count])
 handles.particle_mass_vector = ones(1,handles.particle_count);
 handles.color_map = hsv(handles.particle_count);
 [handles.x, handles.y] = do_initialize_box(handles);
+handles.vx = zeros(1,handles.particle_count);
+handles.vy = zeros(1,handles.particle_count);
 guidata(hObject, handles);
 set(handles.reset_button,'Enable','off');
 handles.particles_plot = do_plot_particles(handles);
+handles.drag_line = arrow('Start',[0 0 0],'Stop',[0 0 0],'BaseAngle',80, 'Length',0); 
 set(handles.reset_button,'Enable','on');
+handles.max_particle_size = 0.3;
+handles.timer = timer('ExecutionMode', 'fixedSpacing', 'Period', 0.01, ...
+		'TimerFcn', @(x,y)(timerFcn(x,y,handles)), 'StartDelay', 0.2, 'TasksToExecute', inf );
 guidata(hObject, handles);
 
 function particle_click_callback(src,evt, handles, particle_ID)
@@ -95,10 +101,15 @@ function reset_button_Callback(hObject, eventdata, handles)
 % hObject    handle to reset_button (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
+guidata(hObject, handles);
+stop(handles.timer);
 handles.particle_count = floor(get(handles.particle_count_sld,'Value'));
 random_data = abs(normrnd(0.1,0.1,[1 handles.particle_count]));
 if get(handles.radio_value_radius,'Value') == 1
+     if(handles.max_particle_size < str2double(get(handles.particle_radius_text_box, 'String')))
+        errordlg('Selected particle size is too big, please change particle size value');
+        return;
+     end
      handles.particle_radius_vector = ones(1,handles.particle_count).*str2double(get(handles.particle_radius_text_box, 'String'));
 else
     handles.particle_radius_vector = random_data;
@@ -111,10 +122,10 @@ end
 handles.color_map = hsv(handles.particle_count);
 axes(handles.particle_box);
 [handles.x,handles.y] = do_initialize_box(handles);
+handles.drag_line = arrow('Start',[0 0 0],'Stop',[0 0 0],'BaseAngle',80, 'Length',0); 
 guidata(hObject, handles);
-set(handles.reset_button,'Enable','off');
-do_plot_particles(handles);
-set(handles.reset_button,'Enable','on');
+handles.particles_plot = do_plot_particles(handles);
+guidata(hObject, handles);
 
 
 
@@ -123,6 +134,11 @@ function stop_button_Callback(hObject, eventdata, handles)
 % hObject    handle to stop_button (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+stop(handles.timer);
+set(handles.stop_button,'Enable','off');
+set(handles.start_button,'Enable','on');
+guidata(hObject, handles);
+
 
 
 % --- Executes on button press in start_button.
@@ -130,7 +146,10 @@ function start_button_Callback(hObject, eventdata, handles)
 % hObject    handle to start_button (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
+start(handles.timer);
+set(handles.stop_button,'Enable','on');
+set(handles.start_button,'Enable','off');
+guidata(hObject, handles);
 
 % --- Executes on slider movement.
 function particle_count_sld_Callback(hObject, eventdata, handles)
@@ -139,7 +158,7 @@ function particle_count_sld_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 val = floor(get(hObject,'Value'));
 set(handles.particle_count_text_box,'String',num2str(val));
-set(handles.text3, 'String', resolve_label_text(val));
+set(handles.text3, 'String', resolve_label_text(val,handles));
 guidata(hObject,handles);
 
 
@@ -274,7 +293,7 @@ function figure1_CloseRequestFcn(hObject, eventdata, handles)
 % hObject    handle to figure1 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
+stop(handles.timer);
 axes(handles.particle_box);
 cla;
 axes(handles.velocity_distribution);
@@ -289,12 +308,15 @@ else
     set(target_radio,'Value',0);
 end
 
-function [label_text] = resolve_label_text(val)
+function [label_text] = resolve_label_text(val, handles)
 if val > 100
+    handles.max_particle_size = 0.2;
     label_text = 'Choose particle radius (0.001 - 0.2)';
 elseif val > 50
+    handles.max_particle_size = 0.3;
     label_text = 'Choose particle radius (0.001 - 0.3)';
 else
+    handles.max_particle_size = 0.5;
     label_text = 'Choose particle radius (0.001 - 0.5)';
 end
 
@@ -330,22 +352,35 @@ function figure1_WindowButtonUpFcn(hObject, eventdata, handles)
 % hObject    handle to figure1 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+current_point = get(handles.particle_box,'CurrentPoint');
+if handles.last_clicked_particle
+    arrow(handles.drag_line,'Start',[0 0 0],'Stop',[0 0 0],'BaseAngle',80, 'Length',0);
+    handles.vx(handles.last_clicked_particle) = handles.x(handles.last_clicked_particle)-current_point(1);
+    handles.vy(handles.last_clicked_particle) = handles.y(handles.last_clicked_particle)-current_point(3);
+    start(handles.timer);
+    set(handles.stop_button,'Enable','on');
+end
 handles.last_clicked_particle = 0;
 guidata(hObject, handles);
 
 
 % --- Executes on mouse motion over figure - except title and menu.
 function figure1_WindowButtonMotionFcn(hObject, eventdata, handles)
-% hObject    handle to figure1 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 if handles.last_clicked_particle ~= 0
-   i= handles.last_clicked_particle;
-   current_point = get(handles.particle_box,'CurrentPoint');
-   delete(handles.particles_plot(i));
-   handles.particles_plot(i) = do_plot_single_particle(current_point(1),current_point(3),i,handles.particle_radius_vector(i),handles.color_map(i,:), handles);  
+    i = handles.last_clicked_particle;
+    current_point = get(handles.particle_box,'CurrentPoint');
+    if is_in_plot_area(handles, current_point, handles.particle_radius_vector(i))
+        arrow(handles.drag_line,'Start',[handles.x(i) handles.y(i) 0],'Stop',[current_point(1) current_point(3) 0],'BaseAngle',80, 'Length',10); 
+    end
 end
 guidata(hObject, handles);
+
+function [b] = is_in_plot_area(handles, current_point, particle_radius)
+b = 0;
+if current_point(1)-particle_radius > 0 && current_point(1) + particle_radius < handles.X_BOUND && current_point(3)-particle_radius > 0 && current_point(3)+particle_radius < handles.Y_BOUND
+   b = 1;
+end
+
 
 function [circles] = do_plot_particles(handles)
 circles = zeros(1,handles.particle_count);
@@ -361,5 +396,12 @@ circle = rectangle('FaceColor',color_map,...
         2*radius,2*radius],...
         'ButtonDownFcn',{@particle_click_callback,handles,particle_ID});
 
-
-
+function timerFcn(obj, event, handles )
+try
+    [handles.x, handles.y, handles.vx, handles.vy] = do_particle_movement_simulation(handles.x, handles.y, handles.vx, handles.vy, handles.particle_radius_vector, handles.particle_mass_vector, handles.X_BOUND, handles.Y_BOUND);
+    fprintf('Timer works\n');
+    %     axes(handles.particle_box);
+%     do_plot_particles(handles);
+catch ME
+    disp (ME)
+end
