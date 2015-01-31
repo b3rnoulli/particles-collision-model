@@ -25,7 +25,7 @@ function [x, y, vx, vy] = do_particle_movement_simulation(x, y, vx, vy, radius_v
             if(x(j)-radius_vector(j) <=0)
                 x(j) = x(j)+(abs(0-x(j)+radius_vector(j)));
             else
-                x(j) = x(j)-(x(j)+radius_vector(j) - xBound);
+                x(j) = x(j)-(x(j)+radius_vector(j) - x_bound);
             end
             vx(j) = -vx(j);
         end
@@ -34,7 +34,7 @@ function [x, y, vx, vy] = do_particle_movement_simulation(x, y, vx, vy, radius_v
             if(y(j)-radius_vector(j) <=0)
                 y(j) = y(j)+(abs(0-y(j)+radius_vector(j)));
             else
-                y(j) = y(j)-(y(j)+radius_vector(j) - yBound);
+                y(j) = y(j)-(y(j)+radius_vector(j) - y_bound);
             end
             vy(j) = -vy(j);
         end
